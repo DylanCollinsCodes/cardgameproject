@@ -1,6 +1,7 @@
 const passport = require('passport')
 const validator = require('validator')
 const User = require('../models/User')
+const emailValidator = require('../middleware/emailValidation')
 
  exports.getLogin = (req, res) => {
     if (req.user) {
@@ -56,12 +57,20 @@ const User = require('../models/User')
     })
   }
   
-  exports.postSignup = (req, res, next) => {
+  exports.postSignup = async function(req, res, next){
     const validationErrors = []
     if (!validator.isEmail(req.body.email)) validationErrors.push({ msg: 'Please enter a valid email address.' })
     if (!validator.isLength(req.body.password, { min: 8 })) validationErrors.push({ msg: 'Password must be at least 8 characters long' })
     if (req.body.password !== req.body.confirmPassword) validationErrors.push({ msg: 'Passwords do not match' })
-  
+
+    const {valid, reason, validators} = await emailValidator.isEmailValid(req.body.email)
+    
+    if(!valid){
+      validationErrors.push({msg: 'Please provide a valid email address'})
+      validationErrors.push({msg: `${validators[reason].reason}`})
+    }
+    
+
     if (validationErrors.length) {
       req.flash('errors', validationErrors)
       return res.redirect('../signup')
